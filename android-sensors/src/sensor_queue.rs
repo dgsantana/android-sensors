@@ -2,6 +2,7 @@ use std::ptr::NonNull;
 
 use android_sensors_sys::ffi::sensors as ffi;
 use log::error;
+use thiserror::Error;
 
 use crate::sensor::Sensor;
 
@@ -14,12 +15,22 @@ impl SensorEventQueue {
         Self { ptr }
     }
 
-    pub fn enable_sensor(&self, sensor: &Sensor) -> i32 {
-        unsafe { ffi::ASensorEventQueue_enableSensor(self.ptr.as_ptr(), sensor.ptr().as_ptr()) }
+    pub fn enable_sensor(&self, sensor: &Sensor) -> Result<(), SensorEventQueueError> {
+        match unsafe {
+            ffi::ASensorEventQueue_enableSensor(self.ptr.as_ptr(), sensor.ptr().as_ptr())
+        } {
+            0 => Ok(()),
+            e => Err(SensorEventQueueError(e)),
+        }
     }
 
-    pub fn disable_sensor(&self, sensor: &Sensor) -> i32 {
-        unsafe { ffi::ASensorEventQueue_disableSensor(self.ptr.as_ptr(), sensor.ptr().as_ptr()) }
+    pub fn disable_sensor(&self, sensor: &Sensor) -> Result<(), SensorEventQueueError> {
+        match unsafe {
+            ffi::ASensorEventQueue_disableSensor(self.ptr.as_ptr(), sensor.ptr().as_ptr())
+        } {
+            0 => Ok(()),
+            e => Err(SensorEventQueueError(e)),
+        }
     }
 
     pub fn events(&self) -> Vec<SensorEvent> {
@@ -231,3 +242,7 @@ impl SensorData {
         Some(event)
     }
 }
+
+#[derive(Debug, Copy, Clone, Error)]
+#[error("Android sensor event queue error")]
+pub struct SensorEventQueueError(pub i32);
