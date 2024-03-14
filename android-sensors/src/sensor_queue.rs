@@ -57,6 +57,27 @@ impl SensorEventQueue {
         }
         events
     }
+
+    pub fn all_events(&self) -> Vec<SensorEvent> {
+        let mut event = create_empty_event();
+        let mut events = Vec::new();
+        unsafe {
+            while ffi::ASensorEventQueue_getEvents(self.ptr.as_ptr(), &mut event, 1) > 0 {
+                let Some(data) = SensorData::from_event(&event) else {
+                    error!("Received unknown sensor data");
+                    continue;
+                };
+                events.push(SensorEvent {
+                    sensor: event.sensor,
+                    timestamp: event.timestamp,
+                    version: event.version,
+                    type_: event.type_,
+                    data
+                });
+            }
+        }
+        events
+    }
 }
 
 fn create_empty_event() -> ffi::ASensorEvent {
