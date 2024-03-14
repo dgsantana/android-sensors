@@ -64,7 +64,7 @@ impl SensorManager {
     /// The callback is called when events are available.
     pub fn create_event_queue(
         &self,
-        looper: ForeignLooper,
+        looper: &ForeignLooper,
         ident: i32,
     ) -> Option<SensorEventQueue> {
         let queue_ptr = unsafe {
@@ -84,7 +84,7 @@ impl SensorManager {
 
     pub fn create_event_queue_with_callback<F: FnMut(BorrowedFd<'_>, FdEvent) -> bool>(
         &self,
-        looper: ForeignLooper,
+        looper: &ForeignLooper,
         ident: i32,
         callback: F,
     ) -> Option<SensorEventQueue> {
