@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use android_sensors_sys::ffi::looper as ffi;
+use android_sensors_sys::ffi::sensors as ffi;
 use thiserror::Error;
 
 use crate::utils::abort_on_panic;
@@ -46,21 +46,23 @@ impl ThreadLooper {
         let mut fd = -1;
         let mut events = -1;
         let mut data: *mut c_void = ptr::null_mut();
-        match unsafe { ffi::ALooper_pollOnce(ms, &mut fd, &mut events, &mut data) } {
-            ffi::ALOOPER_POLL_WAKE => Ok(Poll::Wake),
-            ffi::ALOOPER_POLL_CALLBACK => Ok(Poll::Callback),
-            ffi::ALOOPER_POLL_TIMEOUT => Ok(Poll::Timeout),
-            ffi::ALOOPER_POLL_ERROR => Err(LooperError),
-            ident if ident >= 0 => Ok(Poll::Event {
-                ident,
-                // SAFETY: Even though this FD at least shouldn't outlive self, a user could have
-                // closed it after calling add_fd or add_fd_with_callback.
-                fd: unsafe { BorrowedFd::borrow_raw(fd) },
-                events: FdEvent::from_bits(events as u32)
-                    .expect("poll event contains unknown bits"),
-                data,
-            }),
-            _ => unreachable!(),
+        unsafe {
+            match ffi::ALooper_pollOnce(ms, &mut fd, &mut events, &mut data) {
+                i if i == ffi::ALOOPER_POLL_WAKE as i32 => Ok(Poll::Wake),
+                i if i == ffi::ALOOPER_POLL_CALLBACK as i32 => Ok(Poll::Callback),
+                i if i == ffi::ALOOPER_POLL_TIMEOUT as i32 => Ok(Poll::Timeout),
+                i if i == ffi::ALOOPER_POLL_ERROR as i32 => Err(LooperError),
+                ident if ident >= 0 => Ok(Poll::Event {
+                    ident,
+                    // SAFETY: Even though this FD at least shouldn't outlive self, a user could have
+                    // closed it after calling add_fd or add_fd_with_callback.
+                    fd: BorrowedFd::borrow_raw(fd),
+                    events: FdEvent::from_bits(events as u32)
+                        .expect("poll event contains unknown bits"),
+                    data,
+                }),
+                _ => unreachable!(),
+            }
         }
     }
 
@@ -93,20 +95,22 @@ impl ThreadLooper {
         let mut fd = -1;
         let mut events = -1;
         let mut data: *mut c_void = ptr::null_mut();
-        match unsafe { ffi::ALooper_pollAll(ms, &mut fd, &mut events, &mut data) } {
-            ffi::ALOOPER_POLL_WAKE => Ok(Poll::Wake),
-            ffi::ALOOPER_POLL_TIMEOUT => Ok(Poll::Timeout),
-            ffi::ALOOPER_POLL_ERROR => Err(LooperError),
-            ident if ident >= 0 => Ok(Poll::Event {
-                ident,
-                // SAFETY: Even though this FD at least shouldn't outlive self, a user could have
-                // closed it after calling add_fd or add_fd_with_callback.
-                fd: unsafe { BorrowedFd::borrow_raw(fd) },
-                events: FdEvent::from_bits(events as u32)
-                    .expect("poll event contains unknown bits"),
-                data,
-            }),
-            _ => unreachable!(),
+        unsafe {
+            match ffi::ALooper_pollAll(ms, &mut fd, &mut events, &mut data) {
+                i if i == ffi::ALOOPER_POLL_WAKE as i32 => Ok(Poll::Wake),
+                i if i == ffi::ALOOPER_POLL_TIMEOUT as i32 => Ok(Poll::Timeout),
+                i if i == ffi::ALOOPER_POLL_ERROR as i32 => Err(LooperError),
+                ident if ident >= 0 => Ok(Poll::Event {
+                    ident,
+                    // SAFETY: Even though this FD at least shouldn't outlive self, a user could have
+                    // closed it after calling add_fd or add_fd_with_callback.
+                    fd: BorrowedFd::borrow_raw(fd),
+                    events: FdEvent::from_bits(events as u32)
+                        .expect("poll event contains unknown bits"),
+                    data,
+                }),
+                _ => unreachable!(),
+            }
         }
     }
 
@@ -153,16 +157,16 @@ bitflags::bitflags! {
     pub struct FdEvent : u32 {
         /// The file descriptor is available for read operations.
         #[doc(alias = "ALOOPER_EVENT_INPUT")]
-        const INPUT = ffi::ALOOPER_EVENT_INPUT;
+        const INPUT = ffi::ALOOPER_EVENT_INPUT as u32;
         /// The file descriptor is available for write operations.
         #[doc(alias = "ALOOPER_EVENT_OUTPUT")]
-        const OUTPUT = ffi::ALOOPER_EVENT_OUTPUT;
+        const OUTPUT = ffi::ALOOPER_EVENT_OUTPUT as u32;
         /// The file descriptor has encountered an error condition.
         ///
         /// The looper always sends notifications about errors; it is not necessary to specify this
         /// event flag in the requested event set.
         #[doc(alias = "ALOOPER_EVENT_ERROR")]
-        const ERROR = ffi::ALOOPER_EVENT_ERROR;
+        const ERROR = ffi::ALOOPER_EVENT_ERROR as u32;
         /// The file descriptor was hung up.
         ///
         /// For example, indicates that the remote end of a pipe or socket was closed.
@@ -170,7 +174,7 @@ bitflags::bitflags! {
         /// The looper always sends notifications about hangups; it is not necessary to specify this
         /// event flag in the requested event set.
         #[doc(alias = "ALOOPER_EVENT_HANGUP")]
-        const HANGUP = ffi::ALOOPER_EVENT_HANGUP;
+        const HANGUP = ffi::ALOOPER_EVENT_HANGUP as u32;
         /// The file descriptor is invalid.
         ///
         /// For example, the file descriptor was closed prematurely.
@@ -178,7 +182,7 @@ bitflags::bitflags! {
         /// The looper always sends notifications about invalid file descriptors; it is not
         /// necessary to specify this event flag in the requested event set.
         #[doc(alias = "ALOOPER_EVENT_INVALID")]
-        const INVALID = ffi::ALOOPER_EVENT_INVALID;
+        const INVALID = ffi::ALOOPER_EVENT_INVALID as u32;
 
         // https://docs.rs/bitflags/latest/bitflags/#externally-defined-flags
         const _ = !0;
@@ -271,7 +275,7 @@ impl ForeignLooper {
     pub fn add_fd(
         &self,
         fd: BorrowedFd<'_>,
-        ident: LooperIdent,
+        ident: i32,
         events: FdEvent,
         data: *mut c_void,
     ) -> Result<(), LooperError> {
@@ -279,7 +283,7 @@ impl ForeignLooper {
             ffi::ALooper_addFd(
                 self.ptr.as_ptr(),
                 fd.as_raw_fd(),
-                ident.into_i32(),
+                ident,
                 events.bits() as i32,
                 None,
                 data,
@@ -335,7 +339,7 @@ impl ForeignLooper {
             ffi::ALooper_addFd(
                 self.ptr.as_ptr(),
                 fd.as_raw_fd(),
-                ffi::ALOOPER_POLL_CALLBACK,
+                ffi::ALOOPER_POLL_CALLBACK as i32,
                 events.bits() as i32,
                 Some(cb_handler::<F>),
                 data,
@@ -370,29 +374,6 @@ impl ForeignLooper {
             0 => Ok(false),
             -1 => Err(LooperError),
             _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum LooperIdent {
-    Main,
-    Input,
-    User,
-}
-
-impl LooperIdent {
-    pub fn into_i32(self) -> i32 {
-        self.into()
-    }
-}
-
-impl From<LooperIdent> for i32 {
-    fn from(ident: LooperIdent) -> Self {
-        match ident {
-            LooperIdent::Main => ffi::ALOOPER_ID_MAIN as i32,
-            LooperIdent::Input => ffi::ALOOPER_ID_INPUT as i32,
-            LooperIdent::User => ffi::ALOOPER_ID_USER as i32,
         }
     }
 }

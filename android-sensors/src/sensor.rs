@@ -7,6 +7,9 @@ pub struct Sensor {
 }
 
 impl Sensor {
+    /// Create a new sensor from a pointer.
+    /// # Safety
+    /// The pointer must be valid and point to a valid sensor.
     pub unsafe fn from_ptr(ptr: NonNull<ffi::ASensor>) -> Self {
         Self { ptr }
     }
@@ -131,7 +134,7 @@ impl From<SensorType> for ffi::ASensorType {
             SensorType::LowLatencyOffBodyDetect => ffi::ASENSOR_TYPE_LOW_LATENCY_OFFBODY_DETECT,
             SensorType::AccelerometerUncalibrated => ffi::ASENSOR_TYPE_ACCELEROMETER_UNCALIBRATED,
             SensorType::Invalid => ffi::ASENSOR_TYPE_INVALID,
-            SensorType::Unknown(value) => ffi::ASensorType::ASENSOR_TYPE_INVALID,
+            SensorType::Unknown(_) => ffi::_bindgen_ty_4::ASENSOR_TYPE_INVALID,
         }
     }
 }

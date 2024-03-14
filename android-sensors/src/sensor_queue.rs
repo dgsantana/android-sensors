@@ -147,12 +147,13 @@ impl SensorData {
     /// This function is unsafe because it dereferences the `ASensorEvent` pointer.
     pub unsafe fn from_event(event: &ffi::ASensorEvent) -> Option<Self> {
         // Validate that the event type is known
-        if event.type_ < 1 || event.type_ > 15 {
+        if event.type_ < 1 || event.type_ > 42 {
             error!("Received event for unknown sensor type");
-            panic!("Received event for unknown sensor type");
+            return None;
         }
 
-        let event_type: ffi::ASensorType = std::mem::transmute(event.type_);
+        let event_type: ffi::_bindgen_ty_4 = std::mem::transmute(event.type_);
+
         let event = match event_type {
             ffi::ASENSOR_TYPE_ACCELEROMETER => SensorData::Accelerometer {
                 x: event.__bindgen_anon_1.__bindgen_anon_1.data[0],
