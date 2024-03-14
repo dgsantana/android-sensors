@@ -6,6 +6,7 @@ use thiserror::Error;
 
 use crate::sensor::Sensor;
 
+#[derive(Debug)]
 pub struct SensorEventQueue {
     ptr: NonNull<ffi::ASensorEventQueue>,
 }
@@ -70,11 +71,13 @@ fn create_empty_event() -> ffi::ASensorEvent {
     }
 }
 
+#[derive(Debug)]
 pub struct SensorEvent {
     pub sensor: Sensor,
     pub data: SensorData,
 }
 
+#[derive(Debug)]
 pub enum SensorData {
     Accelerometer {
         x: f32,

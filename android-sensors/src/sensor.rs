@@ -2,6 +2,7 @@ use std::ptr::NonNull;
 
 use android_sensors_sys::ffi::sensors as ffi;
 
+#[derive(Debug)]
 pub struct Sensor {
     ptr: NonNull<ffi::ASensor>,
 }
