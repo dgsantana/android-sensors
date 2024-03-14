@@ -1,0 +1,3 @@
+[workspace]
+members  = ["android-sensors", "android-sensors-sys"]
+resolver = "2"

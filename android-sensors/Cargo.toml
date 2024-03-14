@@ -1,0 +1,12 @@
+[package]
+edition = "2021"
+name    = "android-sensors"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+android-sensors-sys = { path = "../android-sensors-sys" }
+bitflags            = "2.4"
+log                 = "0.4"
+thiserror           = "1.0"
