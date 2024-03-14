@@ -34,7 +34,7 @@ impl SensorEventQueue {
         }
     }
 
-    pub fn events(&self) -> Vec<SensorEvent> {
+    pub fn events(&self, number: usize) -> Vec<SensorEvent> {
         let mut event = create_empty_event();
         let mut events = Vec::new();
         unsafe {
@@ -50,6 +50,9 @@ impl SensorEventQueue {
                     type_: event.type_,
                     data
                 });
+                if events.len() >= number {
+                    break;
+                }
             }
         }
         events
