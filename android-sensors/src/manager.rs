@@ -4,7 +4,7 @@ use std::{ffi::c_int, ptr::NonNull};
 use std::{
     ffi::c_void,
     mem::ManuallyDrop,
-    os::fd::{AsRawFd, BorrowedFd, RawFd},
+    os::fd::{BorrowedFd, RawFd},
 };
 
 use android_sensors_sys::ffi::sensors as ffi;
