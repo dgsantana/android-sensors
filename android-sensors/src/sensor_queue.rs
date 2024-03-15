@@ -4,7 +4,7 @@ use android_sensors_sys::ffi::sensors as ffi;
 use log::error;
 use thiserror::Error;
 
-use crate::sensor::Sensor;
+use crate::sensor::{Sensor, SensorType, VALID_SENSOR_TYPE_INT};
 
 #[derive(Debug)]
 pub struct SensorEventQueue {
@@ -97,11 +97,58 @@ fn create_empty_event() -> ffi::ASensorEvent {
 
 #[derive(Debug)]
 pub struct SensorEvent {
-    pub sensor: i32,
-    pub timestamp: i64,
-    pub version: i32,
-    pub type_: i32,
-    pub data: SensorData,
+    sensor: i32,
+    timestamp: i64,
+    version: i32,
+    type_: i32,
+    data: SensorData,
+}
+
+impl SensorEvent {
+    pub fn sensor(&self) -> i32 {
+        self.sensor
+    }
+
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn version(&self) -> i32 {
+        self.version
+    }
+
+    pub fn type_i32(&self) -> i32 {
+        self.type_
+    }
+
+    pub fn sensor_type(&self) -> SensorType {
+        if !VALID_SENSOR_TYPE_INT.contains(&self.type_) {
+            return SensorType::Unknown(self.type_);
+        }
+        let type_: ffi::ASensorType = unsafe { std::mem::transmute(self.type_) };
+        match type_ {
+            ffi::ASENSOR_TYPE_ACCELEROMETER => SensorType::Accelerometer,
+            ffi::ASENSOR_TYPE_MAGNETIC_FIELD => SensorType::MagneticField,
+            ffi::ASENSOR_TYPE_GYROSCOPE => SensorType::Gyroscope,
+            ffi::ASENSOR_TYPE_LIGHT => SensorType::Light,
+            ffi::ASENSOR_TYPE_PROXIMITY => SensorType::Proximity,
+            ffi::ASENSOR_TYPE_GRAVITY => SensorType::Gravity,
+            ffi::ASENSOR_TYPE_LINEAR_ACCELERATION => SensorType::LinearAcceleration,
+            ffi::ASENSOR_TYPE_ROTATION_VECTOR => SensorType::RotationVector,
+            ffi::ASENSOR_TYPE_RELATIVE_HUMIDITY => SensorType::RelativeHumidity,
+            ffi::ASENSOR_TYPE_AMBIENT_TEMPERATURE => SensorType::AmbientTemperature,
+            ffi::ASENSOR_TYPE_MAGNETIC_FIELD_UNCALIBRATED => SensorType::MagneticFieldUncalibrated,
+            ffi::ASENSOR_TYPE_GAME_ROTATION_VECTOR => SensorType::GameRotationVector,
+            ffi::ASENSOR_TYPE_GYROSCOPE_UNCALIBRATED => SensorType::GyroscopeUncalibrated,
+            ffi::ASENSOR_TYPE_SIGNIFICANT_MOTION => SensorType::SignificantMotion,
+            _ => SensorType::Unknown(self.type_),
+        }
+    }
+
+    pub fn data(&self) -> &SensorData {
+        &self.data
+    }
+
 }
 
 #[derive(Debug)]
@@ -188,7 +235,7 @@ impl SensorData {
     /// This function is unsafe because it dereferences the `ASensorEvent` pointer.
     pub unsafe fn from_event(event: &ffi::ASensorEvent) -> Option<Self> {
         // Validate that the event type is known
-        if event.type_ < 1 || event.type_ > 42 {
+        if !VALID_SENSOR_TYPE_INT.contains(&event.type_) {
             error!("Received event for unknown sensor type");
             return None;
         }
