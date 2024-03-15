@@ -1,7 +1,15 @@
-use std::{ffi::{c_int, c_void}, mem::ManuallyDrop, os::fd::{BorrowedFd, RawFd}, ptr::NonNull};
+use std::{ffi::c_int, ptr::NonNull};
+
+#[cfg(not(target_os = "windows"))]
+use std::{
+    ffi::c_void,
+    mem::ManuallyDrop,
+    os::fd::{AsRawFd, BorrowedFd, RawFd},
+};
 
 use android_sensors_sys::ffi::sensors as ffi;
 
+#[cfg(not(target_os = "windows"))]
 use crate::{looper::FdEvent, utils::abort_on_panic};
 
 use super::{
@@ -82,6 +90,7 @@ impl SensorManager {
         Some(SensorEventQueue::from_ptr(NonNull::new(queue_ptr)?))
     }
 
+    #[cfg(not(target_os = "windows"))]
     pub fn create_event_queue_with_callback<F: FnMut(BorrowedFd<'_>, FdEvent) -> bool>(
         &self,
         looper: &ForeignLooper,

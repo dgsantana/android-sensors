@@ -1,16 +1,19 @@
+// Android Looper API
+// This module provides a safe wrapper around the Android Looper API.
+// To make easier to develop on Windows, it "hides" the AsRawFd, BorrowedFd and RawFd
+// on Windows since there isn't this file descriptor concept on Windows.
+use std::{os::raw::c_void, ptr, time::Duration};
+
+#[cfg(not(target_os = "windows"))]
 use std::{
     mem::ManuallyDrop,
-    os::{
-        fd::{AsRawFd, BorrowedFd, RawFd},
-        raw::c_void,
-    },
-    ptr,
-    time::Duration,
+    os::fd::{AsRawFd, BorrowedFd, RawFd},
 };
 
 use android_sensors_sys::ffi::sensors as ffi;
 use thiserror::Error;
 
+#[cfg(not(target_os = "windows"))]
 use crate::utils::abort_on_panic;
 
 #[derive(Debug)]
@@ -56,7 +59,10 @@ impl ThreadLooper {
                     ident,
                     // SAFETY: Even though this FD at least shouldn't outlive self, a user could have
                     // closed it after calling add_fd or add_fd_with_callback.
+                    #[cfg(not(target_os = "windows"))]
                     fd: BorrowedFd::borrow_raw(fd),
+                    #[cfg(target_os = "windows")]
+                    _fd: std::marker::PhantomData,
                     events: FdEvent::from_bits(events as u32)
                         .expect("poll event contains unknown bits"),
                     data,
@@ -104,7 +110,10 @@ impl ThreadLooper {
                     ident,
                     // SAFETY: Even though this FD at least shouldn't outlive self, a user could have
                     // closed it after calling add_fd or add_fd_with_callback.
+                    #[cfg(not(target_os = "windows"))]
                     fd: BorrowedFd::borrow_raw(fd),
+                    #[cfg(target_os = "windows")]
+                    _fd: std::marker::PhantomData,
                     events: FdEvent::from_bits(events as u32)
                         .expect("poll event contains unknown bits"),
                     data,
@@ -204,7 +213,10 @@ pub enum Poll<'fd> {
         /// # Safety
         /// The caller should guarantee that this file descriptor remains open after it was added
         /// via [`ForeignLooper::add_fd()`] or [`ForeignLooper::add_fd_with_callback()`].
+        #[cfg(not(target_os = "windows"))]
         fd: BorrowedFd<'fd>,
+        #[cfg(target_os = "windows")]
+        _fd: std::marker::PhantomData<&'fd ()>,
         events: FdEvent,
         data: *mut c_void,
     },
@@ -272,6 +284,7 @@ impl ForeignLooper {
     // `ALooper_addFd` won't dereference `data`; it will only pass it on to the event.
     // Optionally dereferencing it there already enforces `unsafe` context.
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    #[cfg(not(target_os = "windows"))]
     pub fn add_fd(
         &self,
         fd: BorrowedFd<'_>,
@@ -311,6 +324,7 @@ impl ForeignLooper {
     /// [`remove_fd()`][Self::remove_fd()] or by returning [`false`] from the callback, and for
     /// however long the caller wishes to use this file descriptor inside and after the callback.
     #[doc(alias = "ALooper_addFd")]
+    #[cfg(not(target_os = "windows"))]
     pub fn add_fd_with_callback<F: FnMut(BorrowedFd<'_>, FdEvent) -> bool>(
         &self,
         fd: BorrowedFd<'_>,
@@ -368,6 +382,7 @@ impl ForeignLooper {
     /// Note that unregistering a file descriptor with callback will leak a [`Box`] created in
     /// [`add_fd_with_callback()`][Self::add_fd_with_callback()]. Consider returning [`false`]
     /// from the callback instead to drop it.
+    #[cfg(not(target_os = "windows"))]
     pub fn remove_fd(&self, fd: BorrowedFd<'_>) -> Result<bool, LooperError> {
         match unsafe { ffi::ALooper_removeFd(self.ptr.as_ptr(), fd.as_raw_fd()) } {
             1 => Ok(true),
